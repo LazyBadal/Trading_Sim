@@ -2,7 +2,17 @@
 #include <random>
 using namespace std;
 
-mt19937 gen(time(0));   // number generator base this is from what it will gen random numbers
+mt19937 gen(time(0));   // number generator, this is from what it will gen random numbers
+
+int numgen(){
+        uniform_int_distribution<> range(1, 50);
+        return range(gen);
+    }
+
+int numgen(int low, int high){    // multiple return statemensts for differnt mood levels
+    uniform_int_distribution<> range(low, high);
+    return range(gen);
+}
 
 struct emotions{
     int Patrice_meter;
@@ -10,20 +20,8 @@ struct emotions{
 };
 
 struct Mood{
-
     emotions e;
     
-    public:
-        int numgen(){
-            uniform_int_distribution<> range(1, 50);
-            return range(gen);
-        }
-
-        int numgen(int low, int high){    // multiple return statemensts for differnt mood levels
-            uniform_int_distribution<> range(low, high);
-            return range(gen);
-        }
-
 };
 
 class Item{
@@ -64,7 +62,7 @@ class Buyer: public NPC{
         {
             b_price = x.Current_Val;
 
-            b_goal = b_price - ((M.numgen()*b_price)/100);     // random how much willing to buy for
+            b_goal = b_price - ((numgen()*b_price)/100);     // random how much willing to buy for
         };
 
 
@@ -87,7 +85,7 @@ class Merchant: public NPC{
             s_price = x.True_val;
             buy_price = x.Produce_Val;
 
-            lowest_price = s_price - ((M.numgen()*s_price)/100); // willing to sell if buy price is 20% lower then true val
+            lowest_price = s_price - ((numgen()*s_price)/100); // willing to sell if buy price is % lower then true val
         }
 
 
@@ -120,54 +118,120 @@ class Negotitate{
             B = &b;
             S = &m;
             
-            cout << "Price " << S->s_price << endl;
             Active_price = S->s_price;
             n_price_update();
         }
 
         void thoughts(){
-            cout << "\n";
+            cout << "\n---------------" << endl;
 
             cout << "Buyer" << endl;
             cout << "Buyer Know Price: " << B->b_price << endl
-            << "Buyer Goal: " <<  B->b_goal << endl;
+            << "Buyer Goal: " <<  B->b_goal << endl 
+            << "Buyer N_Price: " << B->n_price << endl;
 
             cout <<"Active price: "<<Active_price << endl;
 
             cout << "Merchant" << endl;
             cout <<"Merchant Buy Price: "<< S->buy_price << endl 
             <<"Merchant Sell Price: " << S->s_price << endl
-            << "Merchant Lowest Price: " << S->lowest_price << endl;
+            << "Merchant Lowest Price: " << S->lowest_price << endl
+            << "Merchant N Price: " << S->n_price << endl;
 
-            cout << "\n"; 
+            cout << "\n---------------" << endl;
         }
         
         // Buyer func
 
-        void offer(){
-            cout << "\nCostly...\n";
+        void lower_price(){ 
             Active_price = B->b_goal;
             n_price_update();
         }
 
         void Buy(){
-            cout << "\nI'll Take it\n";
+            cout << "I'll Take it" << endl;
         }
 
-        void Sell_p_To_know_p()
+        int offer()
         {
-            if (B->n_price > B->b_price && B->n_price > B->b_goal)
+            if (Active_price > 2*B->b_goal)
             {
-                if (Active_price > 2*B->b_goal) {cout << "\nI'm Out" << endl; }
-                else{ offer(); }
+                cout << "Not Buying" << endl; 
+                return 1;
             }
-            if (B->n_price < B->b_price && B->n_price < B->b_goal){Buy();}
+            if (Active_price <= 2*B->b_goal && Active_price >= B->b_price)
+            {
+                cout << "Buyer Tries To Lower Price" << endl;
+                lower_price();
+                return 0;
+            }
+            if (Active_price < B->b_price)
+            {
+                Buy(); 
+                return 1;    
+            }
+            cout << "Error" << endl;
+            return 1;
         }
 
 
         // Merchant func
 
+        void lower_sell_price()
+        {
+            int discount = numgen(2,10);
+            Active_price = S->s_price - ((discount * S->s_price)/100);
+            S->s_price = Active_price;
+            n_price_update();
+        }
+
+        void Sell(){
+            cout << "Sold" << endl;
+        }
+
+        int counter_offer()
+        {
+            if (Active_price < S->lowest_price) 
+            {
+                cout << "Not Selling" << endl; 
+                return 1;
+            }
+            if (Active_price < S->s_price && Active_price >= S->lowest_price) 
+            {
+                cout << "Merchant Lowers Sell Price" << endl;
+                lower_sell_price();
+                return 0;
+            }
+            if (Active_price >= S->s_price)
+            {
+                Sell();
+                return 1;
+            }
+            cout << "Error" << endl;
+            return 1;
+        }
         
+
+        // Main Loop
+        void N_Loop(Item X,Buyer &B, Merchant &M)
+        {
+            int a;
+            inqure(B,M,X);
+            
+            thoughts();
+
+           do{
+                a = offer();
+                if (a == 1){break;}
+
+                a = counter_offer();
+                if (a == 1){break;}
+            } while (true);
+
+            thoughts();
+        }
+
+
 };
 
 class Market{
@@ -177,18 +241,12 @@ class Market{
 
 
 int main(){
-    Item Box(10,100,140);
+    Item Knife(25, 50, 80);
     Merchant M;
     Buyer B;
     Negotitate N;
 
-    N.inqure(B,M,Box);
-    N.thoughts();
-    cout << "-------------------------------------------------";
-    N.Sell_p_To_know_p();
-    cout << "-------------------------------------------------";
-    N.thoughts();
-    
 
+    N.N_Loop(Knife,B,M);
 }
 
